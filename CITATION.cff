@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use these models, please cite the version you used."
+title: "tujia-asr: released acoustic models for syllable-level Tujia speech recognition"
+abstract: >-
+  Two syllable-level CTC acoustic models for Tujia (Northern dialect), both built on
+  wav2vec2-xlsr-53-espeak with a BiLSTM CTC head: v0.1 emits 264 toneless syllable
+  shapes, v0.2 emits 708 toned syllables with tone marks. Code is MIT-licensed; weights
+  and the fine-tuned encoder are released for research use only, and the training
+  corpus is not distributed.
+authors:
+  - name: "ibaibing"
+version: "0.2.0"
+date-released: "2026-10-27"
+license: MIT
+repository-code: "https://github.com/ibaibing/tujia-asr"
+keywords:
+  - Tujia
+  - speech recognition
+  - low-resource languages
+  - CTC
+  - tone
+  - wav2vec2

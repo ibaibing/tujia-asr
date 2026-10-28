@@ -1,0 +1,16 @@
+Usage boundaries — tujia-asr
+
+Code in this repository and in every release archive is MIT-licensed (see LICENSE).
+
+Model weights (tujia-ctc-v0.1.pt, tujia-ctc-v0.2.pt) and the fine-tuned encoder
+(encoder-xlsr53-tujia-v0.2) are provided for research use only. No rights are
+granted to the training recordings or to their transcripts, and none of that
+material is distributed here.
+
+The upstream encoder facebook/wav2vec2-xlsr-53-espeak-cv-ft (Apache-2.0) must retain
+its attribution wherever the fine-tuned encoder or results derived from it are
+redistributed or published.
+
+The v0.2 encoder cannot be replaced by the original XLSR-53 weights published on
+Hugging Face: the features differ, and mixing them degrades recognition
+substantially.
