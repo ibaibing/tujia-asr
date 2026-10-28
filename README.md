@@ -57,7 +57,7 @@ The v0.2 encoder **cannot** be swapped for the original Hugging Face XLSR-53 wei
 | Channel | Contents |
 | --- | --- |
 | GitHub Releases (this repo) | `tujia-ctc-0.1.tar.gz`, `tujia-ctc-0.2.tar.gz` (~17 MB each), `SHA256SUMS` |
-| Hugging Face | `TujiaNLP/tujia-xlsr53-ft` (the 1.2 GB fine-tuned encoder), `TujiaNLP/tujia-ctc-0.1`, `TujiaNLP/tujia-ctc-0.2` |
+| Hugging Face | `TujiaNLP/tujia-xlsr53-ft` (the 1.2 GB fine-tuned encoder), `TujiaNLP/tujia-ctc-v0.1`, `TujiaNLP/tujia-ctc-v0.2` |
 | ModelScope | same three repositories under `TujiaNLP` (mainland mirror) |
 
 Large weights are hosted on the model hubs, not in GitHub Releases. The 1.2 GB encoder is
