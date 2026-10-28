@@ -50,6 +50,8 @@ Output:
 
 `--json out.json` writes structured output, `--start` / `--duration` decode a single span. Keep each input under ~60 s; split longer audio with `--start` / `--duration`.
 
+Full step-by-step instructions — requirements, checksum verification, Windows commands, encoder mirrors, troubleshooting — are in [docs/usage.md](docs/usage.md). When the "Source code" archive of an old tag and the `main` branch disagree, `main` is authoritative.
+
 The v0.2 encoder **cannot** be swapped for the original Hugging Face XLSR-53 weights: the features differ and recognition degrades substantially. It is fetched by `fetch_encoder.sh`.
 
 ## Where the weights live
