@@ -58,11 +58,12 @@ The v0.2 encoder **cannot** be swapped for the original Hugging Face XLSR-53 wei
 | --- | --- |
 | GitHub Releases (this repo) | `tujia-ctc-0.1.tar.gz`, `tujia-ctc-0.2.tar.gz` (~17 MB each), `SHA256SUMS` |
 | Hugging Face | `xbaibing/tujia-xlsr53-ft` (the 1.2 GB fine-tuned encoder), `xbaibing/tujia-ctc-0.1`, `xbaibing/tujia-ctc-0.2` |
-| ModelScope | same three repositories, mainland mirror |
+| ModelScope | `bbingx/tujia-xlsr53-ft`, `bbingx/tujia-ctc-0.1`, `bbingx/tujia-ctc-0.2` (mainland mirror) |
 
 Large weights are hosted on the model hubs, not in GitHub Releases. The 1.2 GB encoder is
 only needed for v0.2 and is downloaded by `./fetch_encoder.sh`; set
-`TUJIA_ENCODER_SOURCE=modelscope` to fetch it from the mainland mirror.
+`TUJIA_ENCODER_SOURCE=modelscope` to fetch it from the mainland mirror, or
+`HF_ENDPOINT=https://hf-mirror.com` to reach Hugging Face through a mirror.
 
 Each archive contains the checkpoint, `vocab.txt`, `model_card.json`, `infer.py`, `fetch_encoder.sh`, `LICENSE`, `NOTICE`, `SHA256SUMS` and `MANIFEST.json`. Verify a download with `shasum -a 256 -c SHA256SUMS`.
 
