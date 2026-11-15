@@ -30,12 +30,14 @@ pip install -e ../TujiaNLP
 pip install -e .
 ```
 
-Model weights are distributed separately (~1.2 GB encoder + 18 MB head):
+Model weights are distributed separately (~1.26 GB encoder + 19 MB head):
 
 | What | Where |
 | --- | --- |
-| `tujia-ctc-v0.2.pt` (toned head) | [GitHub Releases](https://github.com/ibaibing/tujia-asr/releases) → `tujia-ctc-0.2.tar.gz` → `model/` |
-| `tujia-xlsr53-ft` (fine-tuned encoder) | Hugging Face / ModelScope `TujiaNLP/tujia-xlsr53-ft` |
+| `tujia-ctc-v0.3.pt` (current head, 1199 classes) | [GitHub Releases](https://github.com/ibaibing/tujia-asr/releases) → `tujia-ctc-0.3.tar.gz` → `model/` |
+| `tujia-xlsr53-v03f` (encoder for v0.3) | Hugging Face / ModelScope `TujiaNLP/tujia-xlsr53-v03f` |
+| `tujia-ctc-v0.2.pt` (previous head, 709 classes) | `tujia-ctc-0.2.tar.gz` → `model/` |
+| `tujia-xlsr53-ft` (encoder for v0.2) | Hugging Face / ModelScope `TujiaNLP/tujia-xlsr53-ft` |
 | `tujia-ctc-v0.1` (toneless head) | `tujia-ctc-0.1.tar.gz` |
 
 Point the package at them with environment variables or flags:
@@ -248,12 +250,12 @@ under-transcribe than to mishear.
 
 | Channel | Contents |
 | --- | --- |
-| GitHub Releases (this repo) | `tujia-ctc-0.1.tar.gz`, `tujia-ctc-0.2.tar.gz` (~17 MB each), `SHA256SUMS` |
-| Hugging Face | `TujiaNLP/tujia-xlsr53-ft`, `TujiaNLP/tujia-ctc-v0.1`, `TujiaNLP/tujia-ctc-v0.2` |
-| ModelScope | same three repositories under `TujiaNLP` (mainland mirror) |
+| GitHub Releases (this repo) | `tujia-ctc-0.3.tar.gz` (19 MB), `tujia-ctc-0.2.tar.gz`, `tujia-ctc-0.1.tar.gz`, `SHA256SUMS` |
+| Hugging Face | `TujiaNLP/tujia-xlsr53-v03f`, `TujiaNLP/tujia-xlsr53-ft`, `TujiaNLP/tujia-ctc-v0.3`, `TujiaNLP/tujia-ctc-v0.2`, `TujiaNLP/tujia-ctc-v0.1` |
+| ModelScope | same repositories under `TujiaNLP` (mainland mirror) |
 
-The 1.2 GB encoder is required for v0.2; v0.1 can use the original Hugging Face
-XLSR-53 weights. Set `TUJIA_ENCODER_SOURCE=modelscope` when fetching, or
+The 1.26 GB encoder is required for v0.3 (and the older 1.2 GB one for v0.2); v0.1
+can use the original Hugging Face XLSR-53 weights. Set `TUJIA_ENCODER_SOURCE=modelscope` when fetching, or
 `HF_ENDPOINT=https://hf-mirror.com` for a mirror.
 
 Each archive contains the checkpoint, `vocab.txt`, `model_card.json`, a
