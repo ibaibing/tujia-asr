@@ -38,10 +38,9 @@ def _safe_api_info(self, *args, **kwargs):
 _gr_blocks.Blocks.get_api_info = _safe_api_info
 
 HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE))
 
-CKPT_REPO = os.environ.get("TUJIA_CTC_REPO", "TujiaNLP/tujia-ctc-v0.2")
-ENC_REPO = os.environ.get("TUJIA_ENC_REPO", "TujiaNLP/tujia-xlsr53-ft")
+CKPT_REPO = os.environ.get("TUJIA_CTC_REPO", "TujiaNLP/tujia-ctc-v0.3")
+ENC_REPO = os.environ.get("TUJIA_ENC_REPO", "TujiaNLP/tujia-xlsr53-v03f")
 MAX_SEC = 15.0          # 免费 CPU 上再长会等太久
 LOW_CONF = 0.55         # 低于此分数的音节标黄
 
@@ -235,7 +234,13 @@ INTRO_MORE = """
 - 模型开源：`github.com/ibaibing/tujia-asr`
 """
 
-with gr.Blocks(css=CSS, title="土家语语音转写台") as demo:
+# Gradio 6 moved `css` from the Blocks constructor to launch(); pass it to
+# whichever one this version accepts so the layout rules are not silently lost.
+_GR_MAJOR = int(gr.__version__.split(".")[0])
+_BLOCKS_KW = {} if _GR_MAJOR >= 6 else {"css": CSS}
+_LAUNCH_KW = {"css": CSS} if _GR_MAJOR >= 6 else {}
+
+with gr.Blocks(title="土家语语音转写台", **_BLOCKS_KW) as demo:
     gr.Markdown(INTRO)
     with gr.Accordion("使用说明与模型信息", open=False):
         gr.Markdown(INTRO_MORE)
@@ -273,7 +278,7 @@ with gr.Blocks(css=CSS, title="土家语语音转写台") as demo:
             text = gr.Textbox(label="纯文本（可复制）", lines=3)
 
     btn.click(transcribe, inputs=[audio, upload], outputs=[view, table, text],
-              api_name=False)
+              api_name="transcribe")
 
     EX = HERE / "examples"
     ex_field.click(
@@ -284,4 +289,4 @@ with gr.Blocks(css=CSS, title="土家语语音转写台") as demo:
 
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(**_LAUNCH_KW)

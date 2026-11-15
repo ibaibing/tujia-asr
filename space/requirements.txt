@@ -1,8 +1,5 @@
-transformers>=4.30,<5
-huggingface_hub>=0.34,<1.0
+--extra-index-url https://mirrors.cloud.tencent.com/pypi/simple
+tujia-asr==1.0.0
+modelscope
 librosa
 soundfile
-numpy
-torchaudio
-modelscope
-tujia-nlp>=0.4.0
