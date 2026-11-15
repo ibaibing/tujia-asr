@@ -1,5 +1,7 @@
+# aliyun and tencent have not synced tujia-asr 1.0.1 yet; the official index has it.
+--extra-index-url https://pypi.org/simple
 --extra-index-url https://mirrors.cloud.tencent.com/pypi/simple
-https://modelscope.cn/models/TujiaNLP/tujia-ctc-v0.3/resolve/master/wheels/tujia_asr-1.0.1-py3-none-any.whl
+tujia-asr==1.0.1
 modelscope
 librosa
 soundfile

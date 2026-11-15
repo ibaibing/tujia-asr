@@ -40,7 +40,7 @@ each other.
 
 ## Space build note
 
-The Space installs 1.0.1 from the wheel published at
-`TujiaNLP/tujia-ctc-v0.3/wheels/tujia_asr-1.0.1-py3-none-any.whl`, because the PyPI
-mirrors used by the builder had not synced the new version yet. Switch
-`requirements.txt` back to `tujia-asr==1.0.1` once the mirrors catch up.
+Aliyun and Tencent have not synced 1.0.1, and the builder's node for Tsinghua's mirror
+still answered with 1.0.0, so the Space resolves `tujia-asr==1.0.1` from the official
+index; `requirements.txt` adds `https://pypi.org/simple` as an extra index and the build
+log confirms `Successfully installed ... tujia-asr-1.0.1`.
