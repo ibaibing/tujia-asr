@@ -20,13 +20,14 @@ Python 3.10–3.12, 64-bit. Audio is read with `soundfile`; other sample rates a
 resampled on the fly.
 
 ```bash
+pip install tujia-asr
+```
+
+From a checkout instead:
+
+```bash
 git clone https://github.com/ibaibing/tujia-asr
 cd tujia-asr
-
-# tujia-nlp is the single source of truth for Tujia orthography and is not on
-# PyPI yet; install it from source first so the dependency resolves locally.
-pip install -e ../TujiaNLP
-
 pip install -e .
 ```
 

@@ -32,12 +32,14 @@ python3 -c "import sys, platform; print(sys.version); print(platform.architectur
 ## 2. Install the package
 
 ```bash
+pip install tujia-asr
+```
+
+From a checkout instead:
+
+```bash
 git clone https://github.com/ibaibing/tujia-asr
 cd tujia-asr
-
-# orthography dependency, not on PyPI yet: install it first
-pip install -e ../TujiaNLP
-
 pip install -e .
 ```
 
