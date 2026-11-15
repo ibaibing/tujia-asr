@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tujia-asr"
+version = "1.0.0"
+description = "Tujia speech recognition: syllable-level CTC acoustic model plus lexicon-constrained word decoding"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+authors = [{ name = "TujiaNLP contributors" }]
+keywords = ["tujia", "asr", "speech-recognition", "ctc", "low-resource"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Natural Language :: Chinese (Simplified)",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+]
+
+dependencies = [
+    "tujia-nlp>=0.4.0",
+    "numpy",
+    "scipy",
+    "soundfile",
+    "torch>=2.0",
+    "torchaudio",
+    "transformers",
+    "librosa",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[project.scripts]
+tujia-asr = "tujia_asr.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/ibaibing/tujia-asr"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

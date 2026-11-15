@@ -1,11 +1,12 @@
-# Manual usage (GitHub)
+# Usage
 
-Step-by-step instructions for running a release archive on your own machine.
-Everything here is done by hand — no agent, no automation. Commands are given for
-macOS / Linux and for Windows where they differ.
+Two ways to run the released models:
 
-This assumes the GitHub Release channel. Hugging Face and ModelScope hold the same
-files; only the download URLs differ.
+1. **the `tujia-asr` package** (recommended) — syllables and words, one command;
+2. **a release archive** — the standalone `infer.py`, syllables only.
+
+Both use the same checkpoints. Commands are given for macOS / Linux and for
+Windows where they differ.
 
 ---
 
@@ -14,9 +15,9 @@ files; only the download URLs differ.
 | Item | Requirement | Notes |
 | --- | --- | --- |
 | Python | 3.10 – 3.12, **64-bit** | 32-bit Python has no PyTorch wheels |
-| Disk | ~3.5 GB free | archive 17 MB + encoder 1.26 GB + dependencies ~2 GB |
+| Disk | ~3.5 GB free | encoder 1.26 GB + dependencies ~2 GB |
 | RAM | 4 GB free | the encoder is loaded in fp32 |
-| Network | to GitHub, and to Hugging Face or ModelScope | the encoder is a separate 1.26 GB download |
+| Network | to GitHub, and to Hugging Face or ModelScope | the encoder is a separate download |
 | ffmpeg | optional | only needed to convert mp4/m4a into wav |
 | GPU | not required | CPU is enough, `--device cpu` |
 
@@ -26,255 +27,285 @@ Check the Python build first:
 python3 -c "import sys, platform; print(sys.version); print(platform.architecture())"
 ```
 
-You want a `3.x` version in the 3.10–3.12 range and `64bit`.
+---
+
+## 2. Install the package
+
+```bash
+git clone https://github.com/ibaibing/tujia-asr
+cd tujia-asr
+
+# orthography dependency, not on PyPI yet: install it first
+pip install -e ../TujiaNLP
+
+pip install -e .
+```
+
+Verify:
+
+```bash
+tujia-asr --help
+python -c "import tujia_asr; print(tujia_asr.__version__)"
+```
 
 ---
 
-## 2. Download the archive
+## 3. Get the weights
 
-Open the Releases page:
+| File | Source |
+| --- | --- |
+| `tujia-ctc-v0.2.pt` | GitHub Releases → `tujia-ctc-0.2.tar.gz` → `model/` |
+| `tujia-xlsr53-ft/` | Hugging Face or ModelScope `TujiaNLP/tujia-xlsr53-ft` |
+| `tujia-ctc-v0.1.pt` | `tujia-ctc-0.1.tar.gz` → `model/` (toneless) |
 
-```
-https://github.com/ibaibing/tujia-asr/releases
-```
-
-Pick a version. Each release has one asset:
-
-| Release | Asset | Bytes | SHA256 |
-| --- | --- | --- | --- |
-| `tujia-ctc-v0.2` | `tujia-ctc-0.2.tar.gz` | 16,976,694 | `974cf2a629b12203398a8f9f842a6974c5332ec27d79d2b0d8a1c9b4f703478b` |
-| `tujia-ctc-v0.1` | `tujia-ctc-0.1.tar.gz` | 16,080,784 | `b74415578fbdc696b64386b70d4bc34b1582cf26a12ecfa6ca777523e46a7ab0` |
-
-Do **not** download "Source code (zip)" or "Source code (tar.gz)". Those are GitHub's
-automatic snapshots of the repository text: they contain the documentation only, with
-no model weights and no `infer.py`.
-
-Direct link pattern:
+The fine-tuned encoder directory must contain `config.json`:
 
 ```
-https://github.com/ibaibing/tujia-asr/releases/download/tujia-ctc-v0.2/tujia-ctc-0.2.tar.gz
-```
-
-## 3. Verify the download
-
-```bash
-# macOS / Linux
-shasum -a 256 tujia-ctc-0.2.tar.gz
-```
-
-```bat
-:: Windows (PowerShell)
-Get-FileHash tujia-ctc-0.2.tar.gz -Algorithm SHA256
-```
-
-The value must match the table above. If it does not, the download is corrupt — delete
-and fetch again.
-
-## 4. Unpack
-
-```bash
-tar -xzf tujia-ctc-0.2.tar.gz
-cd tujia-ctc-0.2
-```
-
-```bat
-:: Windows 10+ ships tar as well
-tar -xzf tujia-ctc-0.2.tar.gz
-cd tujia-ctc-0.2
-```
-
-You should see:
-
-```
-model/tujia-ctc-v0.2.pt      head weights
-model/vocab.txt              709 labels
-model/model_card.json        architecture, metrics, license
-infer.py                     inference script
-fetch_encoder.sh             encoder downloader (POSIX shell)
-requirements.txt
-SHA256SUMS  MANIFEST.json  README.md  NOTICE  LICENSE
-```
-
-## 5. Create an isolated environment
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate          # macOS / Linux
-```
-
-```bat
-python -m venv .venv
-.venv\Scripts\activate
-```
-
-## 6. Install dependencies
-
-```bash
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-```
-
-On Windows, install the CPU build explicitly. The default PyPI index may pull a 2.5 GB
-CUDA package you do not need:
-
-```bat
-python -m pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
-python -m pip install transformers soundfile numpy huggingface_hub
-```
-
-### If `pip` cannot find torch
-
-`ERROR: Could not find a version that satisfies the requirement torch>=2.0` means no
-wheel matches your interpreter. Check the three usual causes in this order:
-
-1. Python is 3.13+ or 3.9- — install 3.10–3.12.
-2. Python is 32-bit — reinstall the 64-bit build.
-3. `pip` is outdated — `python -m pip install --upgrade pip`.
-
-## 7. Get the encoder (v0.2 only)
-
-v0.2 cannot use the original `facebook/wav2vec2-xlsr-53-espeak-cv-ft` weights: the
-encoder was fine-tuned, and mixing the two degrades recognition badly.
-
-**Option A — download script (macOS / Linux)**
-
-```bash
-./fetch_encoder.sh ./models
-```
-
-This is a POSIX shell script. It does **not** run on Windows.
-
-**Option B — manual download (any OS)**
-
-Download the repository `TujiaNLP/tujia-xlsr53-ft` from Hugging Face or ModelScope and
-place the 5 safetensors shards plus the config files in one folder:
-
-```
-models/tujia-xlsr53-ft/
+tujia-xlsr53-ft/
 ├── config.json
 ├── preprocessor_config.json
 ├── model-00001-of-00005.safetensors
-├── model-00002-of-00005.safetensors
-├── model-00003-of-00005.safetensors
-├── model-00004-of-00005.safetensors
-├── model-00005-of-00005.safetensors
+├── ...
 └── model.safetensors.index.json
 ```
 
-**Mainland China.** Hugging Face is usually unreachable. Two workarounds:
+Point the package at both:
 
 ```bash
-# ModelScope mirror
-TUJIA_ENCODER_SOURCE=modelscope ./fetch_encoder.sh ./models
-
-# Hugging Face through a mirror
-HF_ENDPOINT=https://hf-mirror.com ./fetch_encoder.sh ./models
+export TUJIA_CTC_CKPT=/path/to/tujia-ctc-v0.2.pt
+export TUJIA_XLSR=/path/to/tujia-xlsr53-ft
 ```
 
-The folder name carries no meaning — `--encoder` and `TUJIA_XLSR` accept any path, as
-long as it contains `config.json`.
+Or pass `--ckpt` / `--encoder` per run. The v0.2 encoder **cannot** be replaced
+by the original `facebook/wav2vec2-xlsr-53-espeak-cv-ft`; v0.1 can use the
+original.
 
-v0.1 uses the original encoder instead. Either let `transformers` fetch it from Hugging
-Face on first run, or download it once with `./fetch_encoder.sh` (that script points at
-`facebook/wav2vec2-xlsr-53-espeak-cv-ft` in the v0.1 archive).
+**Mainland China.** Use mirrors:
 
-## 8. Prepare the audio
+```bash
+HF_ENDPOINT=https://hf-mirror.com tujia-asr speech.wav ...
+```
 
-`infer.py` reads audio with `soundfile`: wav, flac, ogg. Container formats such as mp4
-or m4a must be demuxed first:
+The archive's `fetch_encoder.sh` also accepts `TUJIA_ENCODER_SOURCE=modelscope`.
+
+---
+
+## 4. Prepare the audio
+
+`soundfile` reads wav, flac, ogg. Container formats such as mp4 or m4a must be
+demuxed first:
 
 ```bash
 ffmpeg -i video.mp4 -vn -ac 1 -ar 16000 audio.wav
 ```
 
-16 kHz mono is ideal. Other sample rates are resampled on the fly, which requires
-`torchaudio`. Keep each clip under ~60 seconds; for longer files decode a window at a
-time with `--start` / `--duration`.
+16 kHz mono is ideal. Other sample rates are resampled on the fly (requires
+`torchaudio`). Keep each clip under ~60 seconds; longer files are split on
+silence automatically (`--seg` / `--search`).
 
-## 9. Run
+---
 
-macOS / Linux:
+## 5. Run
 
 ```bash
-TUJIA_XLSR=./models/tujia-xlsr53-ft python infer.py audio.wav --device cpu
+# syllables only (no built-in vocabulary)
+tujia-asr audio.wav --device cpu --no-default-dict
+
+# words: the open vocabulary from tujia-nlp is used by default
+tujia-asr audio.wav --device cpu
+
+# add your own rows on top of the built-in vocabulary
+tujia-asr audio.wav --dict lexicon.jsonl --device cpu
+
+# write JSON
+tujia-asr audio.wav --dict lexicon.jsonl --json out.json
 ```
 
 Windows (PowerShell):
+
+```powershell
+$env:TUJIA_CTC_CKPT = "C:\models\tujia-ctc-v0.2.pt"
+$env:TUJIA_XLSR = "C:\models\tujia-xlsr53-ft"
+tujia-asr audio.wav --dict lexicon.jsonl
+```
+
+Output, word mode:
+
+```
+# audio.wav  4.6s  ctc  13 spikes  tier-A 43%
+
+=== words
+[   0.00→   0.43] ni³⁵ 「代你，人称代词称对方」  A
+[   0.43→   1.19] sa³⁵ 「名木排系汉语借词」        A
+
+text: ni³⁵ sa³⁵ ...
+```
+
+Columns: start, end, word (toned IPA), gloss, tier. With `--no-default-dict` and
+no `--dict`, the same layout lists syllables with tone confidence.
+
+Tiers: `A` exact syllable match with agreeing tone, `B` fuzzy match or tone
+disagreement, `C` supported only by the second channel, `D` dropped (only with
+the ZIPA backend).
+
+### Options
+
+| Flag | Effect |
+| --- | --- |
+| `--dict FILE` | extra lexicon JSONL (repeatable), added to the built-in pack |
+| `--no-default-dict` | do not load the `tujia-nlp` open core vocabulary |
+| `--json [FILE]` | JSON output; no value means stdout |
+| `--out FILE` | alias for `--json FILE` |
+| `--format ipa\|ascii\|ye` | syllable display format |
+| `--no-tone` | skip F0 evidence (the CTC tone head still runs) |
+| `--frontend ctc\|zipa` | acoustic backend (default `ctc`) |
+| `--ckpt FILE` | different head checkpoint |
+| `--encoder DIR` | different XLSR encoder |
+| `--device auto\|mps\|cpu\|cuda` | compute device |
+| `--mode none\|qwen3\|moss\|whisper` | optional second channel |
+| `--seg` / `--search` | long-audio window target / silence search radius |
+| `--quiet` | suppress the human-readable report |
+
+Environment variables: `TUJIA_CTC_CKPT`, `TUJIA_XLSR`, `TUJIA_DICTS`
+(path-separator list), `TUJIA_NO_DEFAULT_DICT`, `TUJIA_FRONTEND`,
+`TUJIA_TONE_BANK`, `TUJIA_AUDIO_ROOT`, `TUJIA_AUDIO_PY`, `ASR_ENDPOINT`,
+`ASR_MODEL`, `ASR_CHAT_MODEL`, `ASR_API_KEY`, `ASR_MODE`. A JSON file at
+`TUJIA_ASR_CONFIG` is read first; env wins.
+
+---
+
+## 6. Lexicon format
+
+The built-in vocabulary (`tujia-open-core`, 1149 northern entries, CC-BY-4.0)
+comes from `tujia-nlp` and is loaded automatically. Rows you pass with `--dict`
+are read first, so your spellings win on collision; the built-in rows are
+appended after them. Use `--no-default-dict` to run on your lexicon alone.
+
+The dictionary is a **post-processor, not a corrector**: it adds word
+boundaries, glosses and a tone prior, but does not change what the acoustic
+model heard. With and without it the syllables and their tone confidence are the
+same. `--dict` is repeatable; the first file to define a headword wins, and the
+built-in pack comes last. Words that differ only in tone are kept as separate
+entries and resolved by tone evidence (`tone_dict` vs `tone_model` in the
+output). Format, one JSON object
+per line, UTF-8:
+
+```json
+{"w": "ni³⁵", "g": "你", "pos": "代"}
+{"w": "a⁵⁵ji²¹", "g": "…", "pos": "名", "pg": "123"}
+```
+
+- `w` (required): toned IPA, superscript tone digits.
+- `g`: gloss, `pos`: part of speech, `pg`: page or other reference. Optional.
+
+Multiple files are merged at load time. Entries whose head has no tone cannot
+participate in word decoding but still contribute syllable shapes.
+
+---
+
+## 7. Python API
+
+```python
+from tujia_asr import Settings, recognize
+
+settings = Settings.from_env()
+res = recognize(
+    "audio.wav",
+    dict_path="lexicon.jsonl",   # rows added to the built-in pack; None = built-in only
+    settings=settings,
+    device="cpu",
+)
+print(res["text"])
+print(res["words"][0]["ortho"], res["words"][0]["tier"])
+```
+
+`res["schema"]` is `tujia.asr/1`. See the README for the full key list.
+
+---
+
+## 8. Optional backends
+
+- **ZIPA**: `--frontend zipa --zipa-root ~/workspace/tools/zipa --zipa-python …`
+  runs the external lattice decoder; needs a lexicon. Off by default.
+- **Second channel**: `--mode qwen3` (or `whisper` / `moss`) plus
+  `ASR_ENDPOINT=http://host:port/v1`. Used only as weak evidence.
+- **Tone bank**: `TUJIA_TONE_BANK=/path/to/bank` with a `manifest.csv`;
+  supplies speaker-matched tone templates.
+
+---
+
+## 9. Troubleshooting
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| `Could not find a version that satisfies the requirement torch` | interpreter mismatch or 32-bit Python | see step 1 |
+| `未找到 CTC 权重` | no checkpoint configured | set `TUJIA_CTC_CKPT` / `--ckpt` |
+| `编码器目录不存在` | `TUJIA_XLSR` unset or one level too high | point at the folder containing `config.json` |
+| `metadata.get("format")` / safetensors error | an old copy of the encoder | delete the folder and re-download |
+| `soundfile` error on `.mp4` | unsupported container | convert to wav first |
+| `KeyError` on load | `vocab.txt` does not match the checkpoint | do not mix v0.1 and v0.2 files |
+| No words, only syllables | no `--dict`, or lexicon not matching | check the `unknown` spans and the lexicon |
+| Very slow on CPU | expected | ~1× real time per clip; use `--seg` |
+
+---
+
+## 10. Manual usage of a release archive
+
+The archives remain standalone. This is the syllables-only `infer.py` path.
+
+```bash
+# verify
+shasum -a 256 tujia-ctc-0.2.tar.gz
+
+# unpack
+tar -xzf tujia-ctc-0.2.tar.gz && cd tujia-ctc-0.2
+
+# environment
+python3 -m venv .venv && source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+
+# encoder (v0.2 only)
+./fetch_encoder.sh ./models
+
+# decode
+TUJIA_XLSR=./models/tujia-xlsr53-ft python infer.py audio.wav --device cpu
+```
+
+Windows: install `torch torchaudio` with the CPU index, then run
 
 ```powershell
 $env:TUJIA_XLSR = "models\tujia-xlsr53-ft"
 python infer.py audio.wav --device cpu
 ```
 
-Windows (CMD):
+The archive's `infer.py` now imports `tujia_nlp` for tone / Ye formatting.
+Install it from source (`pip install -e /path/to/TujiaNLP`) if it is not on
+PyPI. Verify the archive with `shasum -a 256 -c SHA256SUMS`; all nine lines must
+print `OK`.
 
-```bat
-set TUJIA_XLSR=models\tujia-xlsr53-ft
-python infer.py audio.wav --device cpu
-```
+Archive `infer.py` flags: `--json`, `--start`, `--duration`, `--device`,
+`--ckpt`, `--format ipa|ascii|ye`.
 
-Or pass the path explicitly, which avoids environment variables entirely:
+---
 
-```bash
-python infer.py audio.wav --device cpu --encoder ./models/tujia-xlsr53-ft
-```
+## 11. What the labels mean
 
-Output, one syllable per line:
+v0.2 emits 708 toned syllables plus blank. The tone (`21 / 35 / 53 / 55`) is part
+of the label, so `la35` is one unit, not `la` plus a tone. There is no word
+segmentation, translation or punctuation inside the model itself; the package
+adds word segmentation when a lexicon is supplied.
 
-```
-    4.42     4.58  kɤ53        0.718
-    4.56     4.70  tsʰeŋ21     0.320
-    4.70     4.86  xu21        0.479
-```
+v0.1 emits toneless syllable shapes only.
 
-Columns: start seconds, end seconds, toned syllable label, confidence.
+---
 
-Useful flags:
-
-| Flag | Effect |
-| --- | --- |
-| `--json out.json` | write structured output with timestamps |
-| `--start 12.0 --duration 8.0` | decode one window of a long file |
-| `--device mps` / `cuda` | use Apple GPU or an NVIDIA GPU |
-| `--ckpt path.pt` | use a different head checkpoint |
-
-## 10. Verify the package against its manifest
-
-Every archive carries `SHA256SUMS` and `MANIFEST.json`:
-
-```bash
-shasum -a 256 -c SHA256SUMS
-```
-
-All nine lines must print `OK`. This checks the files inside the archive against the
-hashes recorded at build time, independent of the outer `.tar.gz`.
-
-## Troubleshooting
-
-| Symptom | Cause | Fix |
-| --- | --- | --- |
-| `Could not find a version that satisfies the requirement torch` | interpreter mismatch or 32-bit Python | see step 6 |
-| `Fine-tuned encoder directory not found` | `TUJIA_XLSR` unset or pointing one level too high | point at the folder containing `config.json` |
-| `metadata.get("format")` / safetensors error | an old copy of the encoder downloaded before 2026-10-28 | delete the folder and re-download |
-| `soundfile` error on `.mp4` | unsupported container | convert to wav first |
-| Everything downloads, then `KeyError` on load | `vocab.txt` does not match the checkpoint | do not mix v0.1 and v0.2 files |
-| Very slow on CPU | expected | ~1× real time per clip on a laptop CPU; use `--start/--duration` |
-
-## What the labels mean
-
-v0.2 emits 708 toned syllables plus blank. The tone (`21 / 35 / 53 / 55`) is part of the
-label, so `la35` is one unit, not `la` plus a tone. There is no word segmentation, no
-translation and no punctuation — the model is a syllable recogniser.
-
-v0.1 emits toneless syllable shapes only; tones must be restored downstream from a
-lexicon.
-
-## License boundaries
+## 12. License boundaries
 
 - Scripts and documentation: MIT.
-- Model weights: research use only. No rights to the training recordings or transcripts
-  are granted, and none of that material is distributed.
-- The upstream encoder `facebook/wav2vec2-xlsr-53-espeak-cv-ft` is Apache-2.0 and must
-  retain its attribution.
+- Model weights: research use only. No rights to the training recordings or
+  transcripts are granted, and none of that material is distributed.
+- The upstream encoder `facebook/wav2vec2-xlsr-53-espeak-cv-ft` is Apache-2.0
+  and must retain its attribution.
 
-See `NOTICE` inside the archive for the full boundary.
+See `NOTICE` for the full boundary.
