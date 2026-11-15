@@ -40,7 +40,11 @@ def _print_report(res, fmt):
                 f"[{s['t0']:7.2f}→{s['t1']:7.2f}] {_format(s['ipa'], fmt):<10} "
                 f"tone={s.get('tone')}  conf={s['tone_conf']:.2f}"
             )
-    print(f"\ntext: {res['text']}")
+    # `text` is a space separated syllable string, so it has to go through the
+    # same formatter as the per-syllable lines. Otherwise `--format ye` showed
+    # Ye syllables but an IPA summary right below them.
+    text = " ".join(_format(tok, fmt) for tok in str(res["text"]).split())
+    print(f"\ntext: {text}")
     if res["warnings"]:
         print("\n=== warnings")
         for w in res["warnings"]:
