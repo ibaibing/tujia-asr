@@ -37,32 +37,10 @@ around the acoustic model, so a recording goes in and words come out.
 
 ### Model
 
-Run `v03j`, fine-tuned from the `v0.3f` encoder on 5,243 clips with 1,199 toned-syllable
-labels and `lambda_tone = 0.4`.
-
-Best epoch 8; the validation split used for early stopping (141 clips) reports SER
-0.5126.
-
-Held-out comparison, both checkpoints scored on the same 353 clips — the only set that
-is in neither v0.3's training nor its validation split:
-
-| Metric | v0.2 | v0.3 |
-| --- | --- | --- |
-| SER | 0.8627 | **0.7330** |
-| SER, no tone | 0.7034 | 0.6457 |
-| Tone SER | 0.6228 | 0.5832 |
-| Substitution rate | 0.5656 | 0.3057 |
-| Deletion rate | 0.1941 | 0.3901 |
-| Insertion rate | 0.1030 | 0.0372 |
-
-The 353 clips are 0.40 h across 8 speakers, 300 of them one male teacher. v0.2's
-708-label predictions are folded to the 0.6.3 inventory before scoring. The 856-clip
-test split used elsewhere cannot be used here: 851 of its clips are in v0.3's training
-set.
-
-v0.3 is 13 points better overall, but the gain comes from fewer substitutions rather
-than fewer deletions — it emits fewer syllables than the reference, so faint or fast
-speech can come out short.
+Ships `tujia-ctc` v0.3 (training run `v03j`): 1,199 toned syllables, held-out SER 0.7330
+on a 353-clip leak-free split, against 0.8627 for v0.2 on the same clips. The model has
+its own notes — [tujia-ctc-v0.3.md](tujia-ctc-v0.3.md) — because the checkpoint and the
+package now version independently.
 
 ## Migration
 
