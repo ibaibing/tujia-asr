@@ -234,12 +234,15 @@ attaches the tone to the label, e.g. `la35`.
 | Encoder | fine-tuned from the `v0.3f` encoder |
 | Training | 5,243 clips, tone-auxiliary loss weight `lambda_tone = 0.4` |
 | Best epoch | 8 — validation SER 0.5126 over a 141-clip split |
+| Held-out SER | **0.7330** on 353 leak-free clips (see [Evaluation](#evaluation)) |
 
-**v0.3 has no held-out evaluation yet.** The 0.5126 is the validation SER
-recorded while training, over 141 clips, and is not comparable with the v0.2
-rows above: different data, a stricter metric, and none of v0.2's syllable-bigram
-rescoring. The 108-clip held-out table further down therefore covers v0.1/v0.2
-only; a v0.3 row will be added once that evaluation exists.
+The 0.5126 is the validation split used for early stopping, so it is not an
+independent number. The held-out figure comes from 353 clips that appear in
+neither v0.3's training nor its validation split; the older 856-clip test split
+cannot be used for v0.3 because 851 of its clips are in v0.3's training set.
+Under the same 353-clip protocol v0.2 scores SER 0.8627, so v0.3 is 13 points
+lower — but it deletes more (0.3901 vs 0.1941), i.e. it is more likely to
+under-transcribe than to mishear.
 
 ## Where the weights live
 
@@ -275,6 +278,23 @@ schema is in [docs/data-format.md](docs/data-format.md).
 | --- | --- | --- | --- |
 | v0.1 | 89.82% | 80.26% | 84.33% |
 | v0.2 | 89.90% | 83.93% | 84.37% |
+
+### SER, v0.2 vs v0.3
+
+The 108-clip split above belongs to v0.1/v0.2; 74 of those clips are inside
+v0.3's training set, and 851 of the 856 clips in the larger test split are too.
+The comparable set is the 353 clips that neither model's training or validation
+split contains (0.40 h, 8 speakers, 300 of them one male teacher):
+
+| Checkpoint | SER | SER, no tone | Tone SER | Sub | Del | Ins |
+| --- | --- | --- | --- | --- | --- | --- |
+| v0.2 | 86.27% | 70.34% | 62.28% | 56.56% | 19.41% | 10.30% |
+| v0.3 | **73.30%** | 64.57% | 58.32% | 30.57% | 39.01% | 3.72% |
+
+v0.2 emits 708 labels, so its predictions are folded to the 0.6.3 inventory
+before scoring; reference labels are read from the 0.6.3 vocabulary for both
+runs. v0.3 trades substitutions for deletions — it is right more often but
+emits fewer syllables, so faint or fast speech can come out short.
 
 Word-level accuracy is **not** covered by these numbers: the released models
 emit syllables, and word output depends on the lexicon you supply and on the
