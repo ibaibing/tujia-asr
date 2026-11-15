@@ -9,7 +9,7 @@ Without a lexicon the recogniser returns toned syllables; with one it returns
 word-level output.
 """
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 
 from .config import SUPPORTED_MODEL, Settings  # noqa: E402
 from .pipeline import recognize  # noqa: E402

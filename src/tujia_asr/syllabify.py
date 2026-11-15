@@ -54,9 +54,14 @@ def _dist(a, b):
 
 
 def build(shapes):
-    """Syllable inventory -> [(shape, phones)]; keep only vowel-bearing shapes."""
+    """Syllable inventory -> [(shape, phones)]; keep only vowel-bearing shapes.
+
+    Sorted on purpose: ``segment`` keeps the first candidate that reaches a tie,
+    so iterating a raw set would make the transcript depend on PYTHONHASHSEED and
+    change between runs of the same audio.
+    """
     out = []
-    for shape in shapes:
+    for shape in sorted(shapes):
         phones = phone_seq(shape)
         if not (1 <= len(phones) <= MAX_LEN):
             continue

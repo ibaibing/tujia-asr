@@ -33,6 +33,29 @@ def test_settings_reads_dictionary_list():
     assert settings.dict_paths == ("a", "b")
 
 
+def test_settings_reads_blank_bias():
+    assert Settings.from_env({}).blank_bias == 0.0
+    assert Settings.from_env({"TUJIA_BLANK_BIAS": "1.5"}).blank_bias == 1.5
+    assert Settings.from_env({"TUJIA_BLANK_BIAS": "oops"}).blank_bias == 0.0
+
+
+def test_version_matches_pyproject():
+    from pathlib import Path
+    import re
+    import tujia_asr
+
+    pyproject = Path(__file__).resolve().parents[1] / "pyproject.toml"
+    pinned = re.search(r'^version = "([^"]+)"', pyproject.read_text(), re.M).group(1)
+    assert tujia_asr.__version__ == pinned
+
+
+def test_syllable_table_order_is_stable():
+    from tujia_asr import syllabify
+
+    shapes = [s for s, _ in syllabify.build({"a55", "b21", "a21", "tsʰɤ21"})]
+    assert shapes == sorted(shapes)
+
+
 def test_empty_lexicon_and_empty_spikes():
     lexicon = Lexicon.load(None)
     assert lexicon.entries == []
