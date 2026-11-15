@@ -77,6 +77,9 @@ def main(argv=None):
                     help="optional second channel")
     ap.add_argument("--seg", type=float, default=10.0, help="window target length (s)")
     ap.add_argument("--search", type=float, default=2.0, help="silence search radius (s)")
+    ap.add_argument("--blank-bias", type=float, default=None,
+                    help="压低 CTC blank 的 logit（0 关闭；1.0 少丢字、SER 基本不变；"
+                         "1.5 更偏「宁错不删」）")
     ap.add_argument("--zipa-root", default=None, help="local ZIPA checkout (zipa backend)")
     ap.add_argument("--zipa-python", default=None, help="python of the ZIPA environment")
     ap.add_argument("--quiet", action="store_true")
@@ -91,6 +94,8 @@ def main(argv=None):
         settings.encoder = args.encoder
     if args.device:
         settings.device = args.device
+    if args.blank_bias is not None:
+        settings.blank_bias = args.blank_bias
     if args.zipa_root:
         settings.audio_root = args.zipa_root
     if args.zipa_python:

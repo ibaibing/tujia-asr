@@ -42,6 +42,7 @@ class Settings:
     tone_bank: str = ""
     audio_root: str = ""
     audio_py: str = ""
+    blank_bias: float = 0.0
     asr_mode: str = "none"
     asr_endpoint: str = ""
     asr_model: str = ""
@@ -69,6 +70,11 @@ class Settings:
         if not no_default:
             no_default = bool(cfg.get("no_default_dict"))
 
+        try:
+            blank_bias = float(pick("TUJIA_BLANK_BIAS", cfg.get("blank_bias"), 0) or 0)
+        except (TypeError, ValueError):
+            blank_bias = 0.0
+
         return cls(
             ckpt=str(pick("TUJIA_CTC_CKPT", cfg.get("ckpt"))),
             encoder=str(pick("TUJIA_XLSR", cfg.get("encoder"))),
@@ -79,6 +85,7 @@ class Settings:
             tone_bank=str(pick("TUJIA_TONE_BANK", cfg.get("tone_bank"))),
             audio_root=str(pick("TUJIA_AUDIO_ROOT", zipa.get("root"))),
             audio_py=str(pick("TUJIA_AUDIO_PY", zipa.get("python"))),
+            blank_bias=blank_bias,
             asr_mode=str(pick("ASR_MODE", asr.get("mode"), "none")).strip().lower(),
             asr_endpoint=str(pick("ASR_ENDPOINT", asr.get("endpoint"))).rstrip("/"),
             asr_model=str(pick("ASR_MODEL", asr.get("model"))),
@@ -98,6 +105,7 @@ class Settings:
             "dicts": [str(p) for p in self.dict_paths],
             "default_dict": self.default_dict,
             "tone_bank": self.tone_bank,
+            "blank_bias": self.blank_bias,
             "zipa": {"root": self.audio_root, "python": self.audio_py},
             "asr": {
                 "mode": self.asr_mode,

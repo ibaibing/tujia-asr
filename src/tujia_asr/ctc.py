@@ -122,6 +122,13 @@ class CtcFront:
             self.arch = "xlsr_head_tone"   # v0.2 checkpoints omit ``arch``
         self.blank = 0
         self.sep = self.vocab.index("<sep>") if "<sep>" in self.vocab else -1
+        # v0.3 在弱音与连读处过量输出 blank：held-out 上删除率 41%、输出长度只有
+        # 参考的 62%。压一压 blank 的 logit 可以把「丢字」换成可校对的可疑音节，
+        # 代价是替换率上升。1.0 是 SER 基本无损的拐点，1.5 更偏「宁错不删」。
+        try:
+            self.blank_bias = float(os.environ.get("TUJIA_BLANK_BIAS") or 0.0)
+        except ValueError:
+            self.blank_bias = 0.0
         if self.arch in ("xlsr_head", "xlsr_head_tone"):
             from transformers import Wav2Vec2FeatureExtractor, Wav2Vec2Model
 
@@ -210,7 +217,7 @@ class CtcFront:
             if self.arch in ("xlsr_head", "xlsr_head_tone") \
             else self.log_mel(path, offset, duration)
 
-    def decode(self, x):
+    def decode(self, x, blank_bias=None):
         n = torch.tensor([x.shape[0]])
         with torch.no_grad():
             out = self.model(x.unsqueeze(0), n)
@@ -220,6 +227,9 @@ class CtcFront:
             logits, out_len, tone_logits = out[0], out[1], None
         m = int(out_len[0])
         logits = logits[0, :m].float().cpu()
+        bias = self.blank_bias if blank_bias is None else float(blank_bias)
+        if bias:
+            logits[:, self.blank] -= bias
         prob = logits.softmax(-1)
         ids = prob.argmax(-1).tolist()
         best = prob.max(-1).values.tolist()
@@ -313,6 +323,7 @@ def lattice(wav, seg=10.0, search=2.0, settings=None, ckpt=None, device="auto",
     wav = str(Path(wav).expanduser().resolve())
     dur = duration_of(wav)
     front = CtcFront.get(ckpt, device, encoder)
+    front.blank_bias = float(getattr(settings, "blank_bias", 0) or 0)
     plan = [(0.0, None)] if dur <= seg + search else plan_windows(wav, target=seg, search=search)
     windows = []
     for offset, wdur in plan:

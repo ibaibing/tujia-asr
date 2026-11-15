@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tujia-asr"
-version = "1.0.0"
+version = "1.0.1"
 description = "Tujia speech recognition: syllable-level CTC acoustic model plus lexicon-constrained word decoding"
 readme = "README.md"
 requires-python = ">=3.9"

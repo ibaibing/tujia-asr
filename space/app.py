@@ -41,6 +41,10 @@ HERE = Path(__file__).resolve().parent
 
 CKPT_REPO = os.environ.get("TUJIA_CTC_REPO", "TujiaNLP/tujia-ctc-v0.3")
 ENC_REPO = os.environ.get("TUJIA_ENC_REPO", "TujiaNLP/tujia-xlsr53-v03f")
+# v0.3 在弱音与连读处过量输出 blank（held-out 删除率 41%、长度只有参考的 62%）。
+# 校对场景里「看得见的错字」比「整段消失」有用，压 1.0 后删除率降到 31%，
+# SER 只差 0.6 个点。
+os.environ.setdefault("TUJIA_BLANK_BIAS", "1.0")
 MAX_SEC = 15.0          # 免费 CPU 上再长会等太久
 LOW_CONF = 0.55         # 低于此分数的音节标黄
 
