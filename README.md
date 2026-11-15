@@ -226,6 +226,21 @@ take precedence. See `src/tujia_asr/config.py` for the keys.
 Both expect **16 kHz mono** audio and emit one syllable per frame run. v0.2
 attaches the tone to the label, e.g. `la35`.
 
+### v0.3 (shipped with `tujia-asr` 1.0.0)
+
+| | |
+| --- | --- |
+| Labels | 1,199 toned syllables (tones `21 / 35 / 53 / 55`) |
+| Encoder | fine-tuned from the `v0.3f` encoder |
+| Training | 5,243 clips, tone-auxiliary loss weight `lambda_tone = 0.4` |
+| Best epoch | 8 — validation SER 0.5126 over a 141-clip split |
+
+**v0.3 has no held-out evaluation yet.** The 0.5126 is the validation SER
+recorded while training, over 141 clips, and is not comparable with the v0.2
+rows above: different data, a stricter metric, and none of v0.2's syllable-bigram
+rescoring. The 108-clip held-out table further down therefore covers v0.1/v0.2
+only; a v0.3 row will be added once that evaluation exists.
+
 ## Where the weights live
 
 | Channel | Contents |
