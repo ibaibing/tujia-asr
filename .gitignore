@@ -8,3 +8,4 @@ src/*.egg-info/
 .pytest_cache/
 dist/
 build/
+space/.ms_upload_cache

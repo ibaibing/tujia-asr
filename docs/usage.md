@@ -105,6 +105,22 @@ ffmpeg -i video.mp4 -vn -ac 1 -ar 16000 audio.wav
 `torchaudio`). Keep each clip under ~60 seconds; longer files are split on
 silence automatically (`--seg` / `--search`).
 
+### Fewer dropped syllables (`--blank-bias`)
+
+v0.3 is conservative: on the 353-clip held-out set it drops 41% of the reference
+syllables and emits only 62% of the expected length, against 24% drops and 0.86
+length for v0.2. When a human proofreads the output, a visible wrong syllable is
+more useful than a gap, so `--blank-bias 1.0` lowers the CTC blank logit and
+converts many drops into substitutions:
+
+- `1.0` — deletions 41% → 31%, length 0.62 → 0.75, SER +0.6 point
+- `1.5` — deletions 41% → 27%, length 0.62 → 0.80, SER +1.6 points
+
+`TUJIA_BLANK_BIAS` sets the same value from the environment; the demo Space runs
+at 1.0. The sweep reads reference labels through the v0.3i vocabulary, so its
+own baseline SER (0.759) sits 2.6 points above the 73.30% in the README; the
+deltas above are all from that single sweep.
+
 ---
 
 ## 5. Run
@@ -166,11 +182,13 @@ the ZIPA backend).
 | `--device auto\|mps\|cpu\|cuda` | compute device |
 | `--mode none\|qwen3\|moss\|whisper` | optional second channel |
 | `--seg` / `--search` | long-audio window target / silence search radius |
+| `--blank-bias FLOAT` | lower the CTC blank logit: `1.0` trades a few substitutions for far fewer dropped syllables (see below) |
 | `--quiet` | suppress the human-readable report |
 
 Environment variables: `TUJIA_CTC_CKPT`, `TUJIA_XLSR`, `TUJIA_DICTS`
 (path-separator list), `TUJIA_NO_DEFAULT_DICT`, `TUJIA_FRONTEND`,
-`TUJIA_TONE_BANK`, `TUJIA_AUDIO_ROOT`, `TUJIA_AUDIO_PY`, `ASR_ENDPOINT`,
+`TUJIA_TONE_BANK`, `TUJIA_AUDIO_ROOT`, `TUJIA_AUDIO_PY`, `TUJIA_BLANK_BIAS`,
+`ASR_ENDPOINT`,
 `ASR_MODEL`, `ASR_CHAT_MODEL`, `ASR_API_KEY`, `ASR_MODE`. A JSON file at
 `TUJIA_ASR_CONFIG` is read first; env wins.
 

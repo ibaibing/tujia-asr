@@ -33,10 +33,27 @@ v0.3 is 13 points better overall, but the gain comes from fewer substitutions ra
 than fewer deletions — it emits fewer syllables than the reference, so faint or fast
 speech can come out short.
 
+### Fewer dropped syllables (`--blank-bias`)
+
+`tujia-asr` 1.0.1 lowers the CTC blank logit on request. Re-scoring the same 353
+clips with that knob (`TUJIA_BLANK_BIAS` or `--blank-bias`):
+
+| Bias | SER | Sub | Del | Ins | Hyp/ref length |
+| --- | --- | --- | --- | --- | --- |
+| 0 | 0.759 | 0.314 | 0.410 | 0.034 | 0.62 |
+| 1.0 | 0.764 | 0.400 | 0.310 | 0.055 | 0.75 |
+| 1.5 | 0.775 | 0.429 | 0.273 | 0.073 | 0.80 |
+
+The sweep reads reference labels through the v0.3i vocabulary, which is why its
+bias-0 row sits 2.6 points above the 0.7330 in the table above; the three rows are
+directly comparable to each other. The published demo Space runs at 1.0 — a
+visible wrong syllable is easier to correct than a gap, at a 0.6-point SER cost.
+
 ### Assets
 
 - GitHub tag `tujia-ctc-v0.3` marks this model's notes; the v0.3 branch of the code
   lives in the same repository.
-- The checkpoint (`best.pt`, run `v03j`) is **not yet published** to GitHub Releases,
-  Hugging Face or ModelScope — that is what the `tujia-asr` 1.0.0 Space still points at
-  v0.2 for. Uploading it is pending.
+- The checkpoint (`best.pt`, run `v03j`) is published as
+  `TujiaNLP/tujia-ctc-v0.3` on ModelScope and Hugging Face, next to the v0.3f
+  encoder in `TujiaNLP/tujia-xlsr53-v03f`. GitHub Releases is still missing it
+  (`gh` is not authenticated on this machine).

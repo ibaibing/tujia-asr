@@ -28,6 +28,12 @@ The unit is the full model label: a toned syllable such as `tsʰeŋ21`.
    insertion and deletion cost 1, on the **raw** labels (no normalization).
 3. `SER = edit distance / reference length`.
 
+SER is an **error** rate — lower is better, and `1 − SER` approximates syllable
+accuracy. The edit distance is split into substitutions, deletions and
+insertions; the three sum to the error count, so a model that drops audio instead
+of mishearing it can keep the same SER while looking very different in a
+transcript. Always report the split when comparing two checkpoints.
+
 Tone error is the same computation restricted to the tone substring of each label
 (`21`, `35`, `53`, `55`).
 

@@ -229,7 +229,7 @@ take precedence. See `src/tujia_asr/config.py` for the keys.
 Both expect **16 kHz mono** audio and emit one syllable per frame run. v0.2
 attaches the tone to the label, e.g. `la35`.
 
-### v0.3 (shipped with `tujia-asr` 1.0.0)
+### v0.3 (shipped with `tujia-asr` 1.0.0 and later)
 
 | | |
 | --- | --- |
@@ -245,7 +245,11 @@ neither v0.3's training nor its validation split; the older 856-clip test split
 cannot be used for v0.3 because 851 of its clips are in v0.3's training set.
 Under the same 353-clip protocol v0.2 scores SER 0.8627, so v0.3 is 13 points
 lower — but it deletes more (0.3901 vs 0.1941), i.e. it is more likely to
-under-transcribe than to mishear.
+under-transcribe than to mishear. When proofreading matters more than the SER
+number, `--blank-bias 1.0` turns a third of those deletions into visible
+(if wrong) syllables at a 0.6-point SER cost; see
+[`docs/usage.md`](docs/usage.md#fewer-dropped-syllables---blank-bias). The demo
+Space runs at 1.0.
 
 ## Where the weights live
 
@@ -270,9 +274,13 @@ Two protocols exist and they are **not interchangeable**. Always name the
 protocol when quoting a number.
 
 - **SER** — strict syllable error rate: token sequences aligned with
-  Needleman–Wunsch, edit distance over reference length. Used for v0.2.
+  Needleman–Wunsch, edit distance over reference length. Used for v0.2 and v0.3.
+  **Lower is better**: 73.30% means roughly a quarter of the syllables are
+  right, and `1 − SER` is a fair approximation of syllable accuracy.
 - **Recall** — lenient syllable recall: normalized shapes, alignment hit at
-  edit similarity ≥ 0.5. Used for v0.1 and cross-version comparisons.
+  edit similarity ≥ 0.5. Used for v0.1 and cross-version comparisons. Again
+  lower SER / higher recall is better; do not read a recall number as an error
+  rate or vice versa.
 
 Definitions and splits are in [docs/protocol.md](docs/protocol.md); the manifest
 schema is in [docs/data-format.md](docs/data-format.md).
