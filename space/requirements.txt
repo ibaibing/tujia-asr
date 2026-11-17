@@ -5,3 +5,6 @@ tujia-asr==1.0.1
 modelscope
 librosa
 soundfile
+# Gradio's MCP server needs the `mcp` extra; 2.x removed Server.call_tool,
+# which Gradio still uses, so stay below 2.0.
+mcp>=1.21,<2.0
