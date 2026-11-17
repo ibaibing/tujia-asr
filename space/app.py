@@ -526,18 +526,12 @@ with gr.Blocks(title="土家语语音转写台", **_BLOCKS_KW) as demo:
         api_name=False,
     )
 
-    # MCP / HTTP API：手机客户端传 data URL，拿回结构化 JSON。
-    # 用单独的事件承载公开端点，界面上的按钮不暴露成工具，避免出现两个同名入口。
-    with gr.Accordion("API（手机客户端 / MCP）", open=False):
-        gr.Markdown(
-            "<sub>`audio` 传 `data:audio/wav;base64,...` 或 http(s) URL；"
-            "返回 JSON，字段见 `schema` 版本 1。</sub>"
-        )
-        api_in = gr.Textbox(label="audio", lines=2,
-                            placeholder="data:audio/wav;base64,....")
-        api_max = gr.Number(value=MAX_SEC, label="max_seconds", precision=0)
-        api_btn = gr.Button("调用 transcribe")
-        api_out = gr.Code(label="JSON", language="json", lines=12)
+    # MCP / HTTP API 由平台（Gradio + ModelScope）提供，界面上不展示。
+    # 但公开端点必须挂在某个事件上，所以保留一组隐藏组件承载 transcribe。
+    api_in = gr.Textbox(visible=False, value="")
+    api_max = gr.Number(value=MAX_SEC, visible=False)
+    api_out = gr.Code(visible=False)
+    api_btn = gr.Button(visible=False)
     api_btn.click(transcribe,
                   inputs=[api_in, adv_blank, adv_tone, api_max],
                   outputs=api_out,
