@@ -63,6 +63,8 @@ MAX_SEC = 300.0         # 单次请求上限：超过则只处理前 5 分钟
 MAX_B64_BYTES = 8 << 20  # data URL 解码后的上限：平台网关对请求体有限制
 MAX_URL_BYTES = 24 << 20  # 服务端自己下载 URL 时的上限
 LOW_CONF = 0.55         # 低于此分数的音节标黄
+PAUSE_SENT = 1.5        # 音节间停顿超过此秒数视为句末
+PAUSE_CLAUSE = 0.45     # 超过此秒数视为分句（气口）
 
 BROWSER_UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -221,6 +223,106 @@ def _syllables(spikes: list[dict]) -> list[dict]:
     return items
 
 
+_LEX = None
+
+
+def _get_lexicon():
+    """线上只加载公开词表（tujia-open-core 北部行）；失败返回 None。"""
+    global _LEX
+    if _LEX is not None:
+        return _LEX or None
+    try:
+        from tujia_nlp.lexicon import pack_entries
+        from tujia_asr.lexicon import Lexicon
+
+        entries = pack_entries(variety="north")
+        for e in entries:
+            e.setdefault("source", "tujia-open-core")
+        _LEX = Lexicon(entries)
+    except Exception:  # noqa: BLE001
+        _LEX = False
+    return _LEX or None
+
+
+def _segment(spikes: list[dict]) -> list[dict]:
+    """与命令行同一条切分链路：词表约束 DP + 拼写校正。
+
+    页面早期直接用 `_syllables()` 合并原始 phone，结果比命令行多出一批
+    artifact（同一音节被拆成多个）。这里改为调用 `tujia_asr.syllabify`，
+    与 `tujia-asr` CLI 保持一致；拿不到词表时退回声学合并。
+    """
+    lex = _get_lexicon()
+    if lex is None:
+        return _syllables(spikes)
+    try:
+        from tujia_asr import postprocess, syllabify
+
+        toks, _unknown = syllabify.segment(spikes, lex)
+        toks, _report = postprocess.fix(toks)
+    except Exception:  # noqa: BLE001
+        return _syllables(spikes)
+
+    phones = [s for s in spikes if not s.get("is_boundary")]
+    out = []
+    for t in toks:
+        i, j = int(t.get("i") or 0), int(t.get("j") or 0)
+        span = [p.get("score") for p in phones[i:j] if p.get("score") is not None]
+        out.append({
+            "syl": t.get("shape") or t.get("ipa") or "",
+            "tone": None if t.get("model_tone") is None else str(t.get("model_tone")),
+            "score": round(float(min(span)), 3) if span else 0.0,
+            "tone_conf": round(float(t.get("model_tone_conf") or 0.0), 3),
+            "start": round(float(t["t0"]), 2),
+            "end": round(float(t["t1"]), 2),
+            "boundary": False,
+        })
+    return out
+
+
+def _words_and_coverage(syls: list[dict]) -> tuple[list[dict], dict]:
+    """音节 → 词表内核心词 + 未收录片段；词表外一律不猜。"""
+    lex = _get_lexicon()
+    if not lex or not syls:
+        return [], {"syllables": len(syls), "in_lexicon": 0, "ratio": 0.0}
+    from tujia_asr.decode import segment_words
+
+    toks = [{"shape": it["syl"], "tone": it["tone"],
+             "t0": it["start"], "t1": it["end"]} for it in syls]
+    ws = segment_words(toks, lex)
+    covered = set()
+    out = []
+    for w in ws:
+        covered.update(range(w["token_i"], w["token_j"]))
+        out.append({
+            "t0": round(w["t0"], 2), "t1": round(w["t1"], 2),
+            "ortho": w["ortho"], "ipa": w["ipa"], "han": w.get("han") or "",
+            "pos": w.get("pos") or "", "source": w.get("source") or "",
+            "tier": w.get("tier"), "in_lexicon": True,
+        })
+    # 连续未命中音节合成一段「未收录」，明确不释义
+    span = []
+    for i, t in enumerate(toks):
+        if i in covered:
+            if span:
+                out.append(_unknown(span, toks))
+                span = []
+        else:
+            span.append(i)
+    if span:
+        out.append(_unknown(span, toks))
+    out.sort(key=lambda w: w["t0"])
+    return out, {"syllables": len(toks), "in_lexicon": len(covered),
+                 "ratio": round(len(covered) / len(toks), 3)}
+
+
+def _unknown(idx: list[int], toks: list[dict]) -> dict:
+    return {
+        "t0": round(toks[idx[0]]["t0"], 2), "t1": round(toks[idx[-1]]["t1"], 2),
+        "ortho": "", "ipa": " ".join(_tones(toks[i]) for i in idx),
+        "han": "", "pos": "", "source": "", "tier": None, "in_lexicon": False,
+    }
+
+
 def _run(path: str, blank_bias: float = DEFAULT_BLANK_BIAS,
          tone_correct: bool = True, low_conf: float = LOW_CONF) -> dict:
     from tujia_asr.ctc import lattice
@@ -236,7 +338,7 @@ def _run(path: str, blank_bias: float = DEFAULT_BLANK_BIAS,
                       device=str(front.device),
                       settings=SimpleNamespace(blank_bias=float(blank_bias)))
 
-    items = _syllables(res["spikes"])
+    items = _segment(res["spikes"])
     syls = [it for it in items if not it.get("boundary")]
     enc = str(getattr(front, "xlsr_path", "") or ENC_REPO)
     meta = {
@@ -252,11 +354,82 @@ def _run(path: str, blank_bias: float = DEFAULT_BLANK_BIAS,
         "n_low": sum(1 for it in syls
                      if it["score"] < low_conf or it["tone_conf"] < 0.5),
     }
-    return {"items": items, "syllables": syls, "meta": meta}
+    words, coverage = _words_and_coverage(syls)
+    meta["lexicon_words"] = sum(1 for w in words if w["in_lexicon"])
+    meta["lexicon_ratio"] = coverage["ratio"]
+    return {"items": items, "syllables": syls, "meta": meta,
+            "words": words, "coverage": coverage}
 
 
 def _tones(it: dict) -> str:
-    return it["syl"] + (it["tone"] or "")
+    # 音节条目用 `syl`，词层内部 token 用 `shape`；两者都接受。
+    shape = it.get("syl") or it.get("shape") or ""
+    tone = it.get("tone")
+    return shape + ("" if tone is None else str(tone))
+
+
+def _seps(syls: list[dict]) -> list[str]:
+    """每个音节之后的分隔符：按停顿长度给句号 / 逗号 / 空格。"""
+    out = []
+    for i, it in enumerate(syls):
+        if i == len(syls) - 1:
+            out.append("。")
+            continue
+        gap = syls[i + 1]["start"] - it["end"]
+        if gap >= PAUSE_SENT:
+            out.append("。")
+        elif gap >= PAUSE_CLAUSE:
+            out.append("，")
+        else:
+            out.append(" ")
+    return out
+
+
+def _punct_text(syls: list[dict], breaks: bool = False, sup: bool = False) -> str:
+    """带标点的纯文本；标点只由停顿决定，不改动音节本身。
+
+    ``breaks=True`` 时在逗号、句号后换行（页面展示用）；
+    ``sup=True`` 时调号用上标（页面展示用，复制出来也是上标）。
+    """
+    seps = _seps(syls)
+    fmt = _toned if sup else _tones
+    out = []
+    for i, it in enumerate(syls):
+        out.append(fmt(it))
+        s = seps[i]
+        out.append(s + "\n" if breaks and s != " " else s)
+    return "".join(out).rstrip()
+
+
+_COPY_JS = """
+(txt) => {
+  if (!txt) return [];
+  const ta = document.createElement('textarea');
+  ta.value = txt;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try { document.execCommand('copy'); } catch (e) {}
+  document.body.removeChild(ta);
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(txt).catch(() => {});
+  }
+  return [];
+}
+"""
+
+
+def _lexicon_line(words: list[dict]) -> str:
+    """线上契约：只显示公开词表内的核心词；词表外明确不释义。"""
+    hit = [w for w in words if w.get("in_lexicon")]
+    unk = [w for w in words if not w.get("in_lexicon")]
+    core = " · ".join(
+        f'<b>{html.escape(w["ortho"])}</b> {html.escape(w["han"])}' for w in hit[:12]) or "无"
+    n_unk = sum(len((w.get("ipa") or "").split()) for w in unk)
+    tail = f"；词表外 <b>{n_unk}</b> 个音节，未释义" if n_unk else ""
+    return f'<div class="meta">核心词（公开词表）：{core}{tail}</div>'
 
 
 def _toned(it: dict) -> str:
@@ -305,6 +478,8 @@ def _ui_transcribe(audio_path, file_path, blank_bias, tone_correct, low_conf):
         )
 
     chips: list[str] = []
+    seps = _seps(syls)
+    si = 0
     for it in r["items"]:
         if it.get("boundary"):
             chips.append('<span class="sep"></span>')
@@ -315,6 +490,10 @@ def _ui_transcribe(audio_path, file_path, blank_bias, tone_correct, low_conf):
             f'title="音节置信度 {it["score"]:.2f} / 声调置信度 {it["tone_conf"]:.2f} / '
             f'{it["start"]}–{it["end"]}s">{html.escape(_toned(it))}</span>'
         )
+        if si < len(seps) and seps[si] != " ":
+            chips.append(f'<span class="punct">{seps[si]}</span>')
+            chips.append('<span class="sep"></span>')
+        si += 1
     n_low = sum(1 for it in syls if it["score"] < low_conf)
     banner = (
         f'<div class="meta">共 {len(syls)} 个音节，分 {m["n_windows"]} 窗解码，'
@@ -322,11 +501,15 @@ def _ui_transcribe(audio_path, file_path, blank_bias, tone_correct, low_conf):
         + (f'；其中 <b>{n_low}</b> 个置信度偏低（标黄，建议人工核对）' if n_low else "；全部为高置信度")
         + "</div>"
     )
-    view = f'{banner}<div class="wrap">{"".join(chips)}</div>'
+    view = f'{banner}{_lexicon_line(r["words"])}<div class="wrap">{"".join(chips)}</div>'
 
-    rows = [[it["syl"], it["tone"], it["score"], it["tone_conf"], it["start"], it["end"]]
-            for it in syls]
-    plain = " ".join(_tones(it) for it in syls)
+    rows = []
+    for i, it in enumerate(syls):
+        rows.append([it["syl"], it["tone"], it["score"], it["tone_conf"], it["start"], it["end"]])
+        # 标点处空一行做视觉分句；表格本身不换行、不拆表
+        if i < len(syls) - 1 and seps[i] != " ":
+            rows.append([None] * 6)
+    plain = _punct_text(syls, breaks=True, sup=True)
     return view, rows, plain, params
 
 
@@ -354,11 +537,14 @@ def transcribe(audio: str, blank_bias: float = DEFAULT_BLANK_BIAS,
             "meta": r["meta"],
             "text": " ".join(_tones(it) for it in r["syllables"]),
             "text_sup": " ".join(_toned(it) for it in r["syllables"]),
+            "text_punct": _punct_text(r["syllables"]),
             "syllables": [
                 {k: it[k] for k in ("syl", "tone", "score", "tone_conf", "start", "end")}
                 for it in r["syllables"]
             ],
             "segments": _segments(r["items"]),
+            "words": r["words"],
+            "coverage": r["coverage"],
         }
     except Exception as exc:  # noqa: BLE001
         payload = {"schema": SCHEMA_VERSION, "ok": False,
@@ -402,6 +588,7 @@ CSS = """
 .chip { font-size:clamp(17px, 4.2vw, 26px); padding:5px 9px; border-radius:8px;
         background:#eef3ff; color:#1b3a6b; font-family: "Noto Sans", system-ui, sans-serif; }
 .chip.low { background:#fff3d6; color:#8a5a00; border:1px solid #f0c36d; }
+.punct { font-size:clamp(17px, 4.2vw, 26px); color:#1b3a6b; align-self:center; }
 .sep { flex-basis:100%; height:0; }
 .meta { font-size:14px; color:#555; }
 .run { font-size:12px; color:#6b6b6b; font-family: ui-monospace, monospace;
@@ -470,13 +657,17 @@ with gr.Blocks(title="土家语语音转写台", **_BLOCKS_KW) as demo:
                 type="filepath",
                 label="录音",
             )
+            # 不设 file_types：iOS Safari 会把 `accept="audio/*"` 用到 Files 里的
+            # 文件上，很多录音（微信导出、iCloud 占位、无 UTI 的 mp3）会被判成
+            # 非音频而置灰，用户根本选不了。格式校验交给 `_to_wav16k` 的解码环节。
             upload = gr.File(
-                file_types=["audio"],
+                file_types=None,
                 type="filepath",
                 label="或上传音频文件",
             )
             gr.Markdown(
-                "<sub>支持 wav / mp3 / m4a / flac；长音频自动分窗，单次上限 5 分钟。</sub>"
+                "<sub>支持 wav / mp3 / m4a / aac / flac / ogg / amr；"
+                "长音频自动分窗，单次上限 5 分钟。</sub>"
             )
             with gr.Accordion("高级参数（校对时再动）", open=False):
                 adv_blank = gr.Slider(
@@ -511,7 +702,10 @@ with gr.Blocks(title="土家语语音转写台", **_BLOCKS_KW) as demo:
                 datatype=["str", "str", "number", "number", "number", "number"],
                 label="逐音节明细",
             )
-            text = gr.Textbox(label="纯文本（可复制）", lines=3)
+            text = gr.Textbox(label="纯文本（带标点）", lines=8)
+            copy_btn = gr.Button("复制全文", size="sm")
+
+    copy_btn.click(None, inputs=[text], outputs=[], js=_COPY_JS)
 
     btn.click(_ui_transcribe,
               inputs=[audio, upload, adv_blank, adv_tone, adv_conf],
