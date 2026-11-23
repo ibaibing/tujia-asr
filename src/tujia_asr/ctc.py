@@ -137,14 +137,14 @@ class CtcFront:
             if not str(path or "").strip():
                 raise FileNotFoundError(
                     "未找到 XLSR 编码器：请用 --encoder 或 TUJIA_XLSR 指向 "
-                    "tujia-xlsr53-ft 目录（含 config.json）"
+                    "tujia-xlsr53-v03f 目录（含 config.json）"
                 )
             self.xlsr_path = str(Path(path).expanduser())
             if not Path(self.xlsr_path).is_dir():
                 raise FileNotFoundError(
                     f"编码器目录不存在：{self.xlsr_path}\n"
-                    "下载 TujiaNLP/tujia-xlsr53-ft（Hugging Face / ModelScope），"
-                    "再指向该目录。v0.2 不能用原始 XLSR-53 权重替代。"
+                    "下载 TujiaNLP/tujia-xlsr53-v03f（Hugging Face / ModelScope），"
+                    "再指向该目录。v0.4 不能用原始 XLSR-53 权重替代。"
                 )
             self.feat = Wav2Vec2FeatureExtractor.from_pretrained(self.xlsr_path)
             self.encoder = Wav2Vec2Model.from_pretrained(self.xlsr_path).to(self.device).eval()
@@ -176,7 +176,7 @@ class CtcFront:
         if not str(ckpt).strip():
             raise FileNotFoundError(
                 "未找到 CTC 权重：请用 --ckpt 或 TUJIA_CTC_CKPT 指向 "
-                "tujia-ctc-v0.2.pt（见 https://github.com/ibaibing/tujia-asr/releases）"
+                "tujia-ctc-v0.4.pt（见 https://github.com/ibaibing/tujia-asr/releases）"
             )
         ckpt = str(Path(ckpt).expanduser())
         if not Path(ckpt).is_file():

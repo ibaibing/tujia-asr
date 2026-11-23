@@ -34,6 +34,9 @@ refs = [vocab[i] for i in ids]
 - **v0.3** — 1,199 entries: blank plus 1,198 toned syllables, again
   `shape + tone` with tone ∈ `{21, 35, 53, 55}`. The added shapes come from the
   wider training set; see `releases/tujia-ctc-v0.3.md`.
+- **v0.4** — 933 entries: blank plus 932 **toneless** syllables. Tone is not in
+  the vocabulary; a separate 4-class head predicts `21 / 35 / 53 / 55` at each
+  syllable's peak frame. See `releases/tujia-ctc-v0.4.md`.
 
 The label set and its ordering are packaged with each release; do not substitute a
 vocabulary from the other version.

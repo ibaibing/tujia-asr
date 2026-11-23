@@ -15,16 +15,16 @@ short_description: Tujia speech to toned syllables, with confidence highlighting
 
 音节级 CTC 语音识别，输出带调音节序列（如 `la⁵⁵`），并对低置信度音节标黄提示人工核对。
 
-- 模型：`TujiaNLP/tujia-ctc-v0.3`（CTC 头，1199 类）+ `TujiaNLP/tujia-xlsr53-v03f`（编码器）
+- 模型：`TujiaNLP/tujia-ctc-v0.4`（932 类去调音节头 + 四调头）+ `TujiaNLP/tujia-xlsr53-v03f`（编码器）
 - 代码：https://github.com/ibaibing/tujia-asr
 
-> v0.2 与 v0.3 的音节表不同（709 vs 1199 类），同一段音频的输出不能直接逐字对比。
+> v0.2 与 v0.3 的音节表不同（709 vs 1199 类），v0.4 改为 932 个去调音节 + 独立调头；同一段音频的输出不能直接逐字对比。
 
 ## 界面参数
 
 | 参数 | 默认 | 说明 |
 |---|---|---|
-| 输出密度（`blank_bias`） | 1.0 | 调高减少漏字、可能多出噪声音节；调低减少错字、可能整段消失 |
+| 输出密度（`blank_bias`） | 0.0 | 调高减少漏字、可能多出噪声音节；v0.4 删除率已很低，默认无需调整 |
 | 声调校正（辅助头） | 开 | 关闭后只用主 CTC 头自带的调号；与本地 `infer.py` 对比时请关闭 |
 | 标黄阈值 | 0.55 | 音节置信度低于此值标黄，只影响显示 |
 
@@ -52,9 +52,9 @@ HTTP `/gradio_api/mcp/`）。客户端需要带浏览器 `User-Agent`，否则�
 {
   "schema": 1,
   "ok": true,
-  "meta": {"model": "tujia-ctc-v0.3.pt", "encoder": "tujia-xlsr53-v03f",
+  "meta": {"model": "tujia-ctc-v0.4.pt", "encoder": "tujia-xlsr53-v03f",
            "duration": 6.6, "n_windows": 1, "elapsed_s": 1.8,
-           "blank_bias": 1.0, "tone_correct": true, "low_conf": 0.55,
+           "blank_bias": 0.0, "tone_correct": true, "low_conf": 0.55,
            "n_syllables": 22, "n_low": 14},
   "text": "kai35 ta53 tɕiau35 ...",
   "text_sup": "kai³⁵ ta⁵³ tɕiau³⁵ ...",
@@ -77,7 +77,7 @@ HTTP `/gradio_api/mcp/`）。客户端需要带浏览器 `User-Agent`，否则�
 
 | 变量 | 默认值 |
 |---|---|
-| `TUJIA_CTC_REPO` | `TujiaNLP/tujia-ctc-v0.3` |
+| `TUJIA_CTC_REPO` | `TujiaNLP/tujia-ctc-v0.4` |
 | `TUJIA_ENC_REPO` | `TujiaNLP/tujia-xlsr53-v03f` |
 | `TUJIA_CTC_DIR` | 空（本地调试时指向含 `.pt` 的目录） |
 | `TUJIA_ENC_DIR` | 空（本地调试时指向编码器目录） |

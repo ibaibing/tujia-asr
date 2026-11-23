@@ -70,8 +70,8 @@ def main(argv=None):
     ap.add_argument("--no-tone", dest="tone", action="store_false",
                     help="skip F0 tone evidence (the CTC tone head still runs)")
     ap.add_argument("--frontend", choices=["ctc", "zipa"], default=None)
-    ap.add_argument("--ckpt", default=None, help="tujia-ctc-v0.2.pt")
-    ap.add_argument("--encoder", default=None, help="tujia-xlsr53-ft directory")
+    ap.add_argument("--ckpt", default=None, help="tujia-ctc-v0.4.pt")
+    ap.add_argument("--encoder", default=None, help="tujia-xlsr53-v03f directory")
     ap.add_argument("--device", default="auto", choices=["auto", "mps", "cpu", "cuda"])
     ap.add_argument("--mode", choices=["none", "qwen3", "moss", "whisper"], default=None,
                     help="optional second channel")

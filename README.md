@@ -1,18 +1,24 @@
 # tujia-asr
 
-Speech recognition for **Tujia (Northern dialect)**: audio in, toned syllables
-and — with the bundled open vocabulary, or one you add — words out.
+Speech recognition for **Tujia**: audio in, toned syllables and — with the
+bundled open vocabulary, or one you add — words out. The v0.4 inventory covers
+both northern and southern survey varieties in one syllable table.
 
-The package ships the inference pipeline only. It bundles two released
-syllable-level CTC models (v0.1 toneless, v0.2 toned), a lexicon-constrained
-word decoder, and optional tone-evidence fusion. Training code, training logs
-and the corpus are not published; the private `tujia-asr-lib` repository is
-used for training and architecture comparison.
+The package ships the inference pipeline only. It bundles the released
+syllable-level CTC models (v0.1 toneless, v0.2 toned, v0.3 toned, v0.4
+toneless-plus-tone), a lexicon-constrained word decoder, and optional
+tone-evidence fusion. Training code, training logs and the corpus are not
+published; the private `tujia-asr-lib` repository is used for training and
+architecture comparison.
 
 ```
 audio.wav  →  CTC acoustic model  →  syllable lattice  →  word decoder  →  text
                                               ↘ optional: F0 tone fusion
 ```
+
+New to the project? [docs/note.md](docs/note.md) explains what the pipeline does,
+what the numbers mean, and where it fails — written for both technical and
+non-technical readers.
 
 ## Install
 
@@ -35,22 +41,24 @@ Model weights are distributed separately (~1.26 GB encoder + 19 MB head):
 
 | What | Where |
 | --- | --- |
-| `tujia-ctc-v0.3.pt` (current head, 1199 classes) | [GitHub Releases](https://github.com/ibaibing/tujia-asr/releases) → `tujia-ctc-0.3.tar.gz` → `model/` |
-| `tujia-xlsr53-v03f` (encoder for v0.3) | Hugging Face / ModelScope `TujiaNLP/tujia-xlsr53-v03f` |
-| `tujia-ctc-v0.2.pt` (previous head, 709 classes) | `tujia-ctc-0.2.tar.gz` → `model/` |
+| `tujia-ctc-v0.4.pt` (current head, 932 syllables + tone head) | [GitHub Releases](https://github.com/ibaibing/tujia-asr/releases) → `tujia-ctc-0.4.tar.gz` → `model/` |
+| `tujia-xlsr53-v03f` (encoder for v0.4 and v0.3) | Hugging Face / ModelScope `TujiaNLP/tujia-xlsr53-v03f` |
+| `tujia-ctc-v0.3.pt` (previous head, 1199 toned classes) | `tujia-ctc-0.3.tar.gz` → `model/` |
+| `tujia-ctc-v0.2.pt` (older head, 709 classes) | `tujia-ctc-0.2.tar.gz` → `model/` |
 | `tujia-xlsr53-ft` (encoder for v0.2) | Hugging Face / ModelScope `TujiaNLP/tujia-xlsr53-ft` |
 | `tujia-ctc-v0.1` (toneless head) | `tujia-ctc-0.1.tar.gz` |
 
 Point the package at them with environment variables or flags:
 
 ```bash
-export TUJIA_CTC_CKPT=/path/to/tujia-ctc-v0.2.pt
-export TUJIA_XLSR=/path/to/tujia-xlsr53-ft      # directory containing config.json
+export TUJIA_CTC_CKPT=/path/to/tujia-ctc-v0.4.pt
+export TUJIA_XLSR=/path/to/tujia-xlsr53-v03f    # directory containing config.json
 ```
 
-The v0.2 encoder **cannot** be replaced by the original
+The fine-tuned encoder **cannot** be replaced by the original
 `facebook/wav2vec2-xlsr-53-espeak-cv-ft` weights: the features differ and
-recognition degrades substantially.
+recognition degrades substantially. v0.4 and v0.3 share the same encoder; v0.2
+uses the older `tujia-xlsr53-ft`.
 
 ## Quick start
 
@@ -229,6 +237,22 @@ take precedence. See `src/tujia_asr/config.py` for the keys.
 Both expect **16 kHz mono** audio and emit one syllable per frame run. v0.2
 attaches the tone to the label, e.g. `la35`.
 
+### v0.4 (shipped with `tujia-asr` 1.1.0 and later)
+
+| | |
+| --- | --- |
+| Labels | 932 toneless syllables + a separate 4-class tone head (`21 / 35 / 53 / 55`) |
+| Encoder | the same fine-tuned `v0.3f` encoder as v0.3 |
+| Training | 3,635 clips from an earlier corpus, repeated twice, plus 9,864 field-survey clips (17,134 rows / 16.2 h) |
+| Best epoch | 34 |
+| Test SER | **0.2132** syllable / **0.2054** tone / **0.3543** joint toned |
+| Old-data validation SER | **0.5571** |
+
+The v0.4 test set has 840 field-survey clips (0.25 h); v0.3 scores 0.7652
+syllable / 0.5616 tone on the same clips. The split is by lexical item, so every
+test speaker also appears in training — this is **not** a speaker-held-out
+number. See [`releases/tujia-ctc-v0.4.md`](releases/tujia-ctc-v0.4.md).
+
 ### v0.3 (shipped with `tujia-asr` 1.0.0 and later)
 
 | | |
@@ -255,12 +279,13 @@ Space runs at 1.0.
 
 | Channel | Contents |
 | --- | --- |
-| GitHub Releases (this repo) | `tujia-ctc-0.3.tar.gz` (19 MB), `tujia-ctc-0.2.tar.gz`, `tujia-ctc-0.1.tar.gz`, `SHA256SUMS` |
-| Hugging Face | `TujiaNLP/tujia-xlsr53-v03f`, `TujiaNLP/tujia-xlsr53-ft`, `TujiaNLP/tujia-ctc-v0.3`, `TujiaNLP/tujia-ctc-v0.2`, `TujiaNLP/tujia-ctc-v0.1` |
+| GitHub Releases (this repo) | `tujia-ctc-0.4.tar.gz` (17 MB), `tujia-ctc-0.3.tar.gz` (19 MB), `tujia-ctc-0.2.tar.gz`, `tujia-ctc-0.1.tar.gz`, `SHA256SUMS` |
+| Hugging Face | `TujiaNLP/tujia-xlsr53-v03f`, `TujiaNLP/tujia-xlsr53-ft`, `TujiaNLP/tujia-ctc-v0.4`, `TujiaNLP/tujia-ctc-v0.3`, `TujiaNLP/tujia-ctc-v0.2`, `TujiaNLP/tujia-ctc-v0.1` |
 | ModelScope | same repositories under `TujiaNLP` (mainland mirror) |
 
-The 1.26 GB encoder is required for v0.3 (and the older 1.2 GB one for v0.2); v0.1
-can use the original Hugging Face XLSR-53 weights. Set `TUJIA_ENCODER_SOURCE=modelscope` when fetching, or
+The 1.26 GB encoder is required for v0.4 and v0.3 (and the older 1.2 GB one for
+v0.2); v0.1 can use the original Hugging Face XLSR-53 weights. Set
+`TUJIA_ENCODER_SOURCE=modelscope` when fetching, or
 `HF_ENDPOINT=https://hf-mirror.com` for a mirror.
 
 Each archive contains the checkpoint, `vocab.txt`, `model_card.json`, a
@@ -274,7 +299,7 @@ Two protocols exist and they are **not interchangeable**. Always name the
 protocol when quoting a number.
 
 - **SER** — strict syllable error rate: token sequences aligned with
-  Needleman–Wunsch, edit distance over reference length. Used for v0.2 and v0.3.
+  Needleman–Wunsch, edit distance over reference length. Used for v0.2–v0.4.
   **Lower is better**: 73.30% means roughly a quarter of the syllables are
   right, and `1 − SER` is a fair approximation of syllable accuracy.
 - **Recall** — lenient syllable recall: normalized shapes, alignment hit at
@@ -289,6 +314,20 @@ schema is in [docs/data-format.md](docs/data-format.md).
 | --- | --- | --- | --- |
 | v0.1 | 89.82% | 80.26% | 84.33% |
 | v0.2 | 89.90% | 83.93% | 84.37% |
+
+### SER, v0.4
+
+v0.4 is scored on an 840-clip field-survey test set (0.25 h, split by lexical
+item). v0.3 is shown on the same clips; it was not trained on this set.
+
+| Checkpoint | Syllable SER | Tone SER | Joint toned SER |
+| --- | --- | --- | --- |
+| v0.3 | 76.52% | 56.16% | — |
+| v0.4 | **21.32%** | **20.54%** | **35.43%** |
+
+By area: north 20.86% syllable / 20.19% tone; south 22.80% / 21.65%. Old-data
+validation SER is 55.71% (v0.3: 64.90%). The test speakers also appear in
+training, so these are seen-speaker numbers, not a speaker-held-out score.
 
 ### SER, v0.2 vs v0.3
 
@@ -318,24 +357,23 @@ their transcripts, the speakers and the collection are not published.
 
 | Property | Value |
 | --- | --- |
-| Audio | 685 clips, 16 kHz mono, 2.571 hours |
-| Annotation unit | one toned IPA syllable per segment, with boundaries |
-| Variety | Northern Tujia; one collection, no dialect mixing |
-| Speakers | a small number of speakers, identities withheld |
-| Label inventory | 264 toneless syllables (v0.1); 708 toned syllables over `21 / 35 / 53 / 55` (v0.2) |
-| Reference syllables | 20,568 in total (17,295 train / 3,273 held out) |
-| Split | 577 train / 108 held out, grouped by recording session |
-| Recording conditions | close-mic read speech of mixed quality across sessions |
+| Audio | 17,134 training rows, 16.2 h, 16 kHz mono (3,635 earlier-corpus clips used twice + 9,864 field-survey clips) |
+| Annotation unit | one toned IPA syllable per segment |
+| Variety | northern and southern survey areas, unified syllable inventory |
+| Speakers | multiple, identities withheld |
+| Label inventory | 932 toneless syllables + 4 tones (v0.4); 1,198 toned (v0.3); 708 / 264 (v0.2 / v0.1) |
+| Evaluation | 840 field test clips (0.25 h), 414 old-data + 439 field validation clips |
+| Recording conditions | read speech and field interviews, mixed quality and levels |
 
 ## Known limitations
 
-1. **One source, one variety.** About 2.6 hours from a single third-party
-   collection, few speakers, Northern dialect. Other dialect points are likely
-   to degrade; fall back to a phone-level front-end plus lexicon.
-2. **Over-segmentation.** Predicted syllable counts exceed reference counts on
-   slow or noisy speech; deletions are comparatively rare.
-3. **Tone is the residual error for v0.2.** Roughly one tone in three is wrong
-   on the test split, spread over `21 ↔ 35 ↔ 55`.
+1. **Uneven coverage.** The field data span several survey areas but not evenly;
+   some speakers and recording conditions are underrepresented. Southern
+   varieties are measured but not separately tuned.
+2. **Length behaviour differs by version.** v0.2 over-segmented, v0.3 deleted
+   more, and v0.4 sits between them (syllable SER 21.3%, tone SER 20.5%).
+3. **Tone is the residual error.** About one tone in five is wrong on the field
+   test set, mostly `55 ↔ 21` and `55 ↔ 53`.
 4. **Narrowband audio degrades sharply.** On a field recording with 85% of its
    energy below 390 Hz, v0.1 recall drops to 48.85%.
 5. **Small splits.** Dev/test is 43/65 clips; treat differences under ~1 point

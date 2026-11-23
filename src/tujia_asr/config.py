@@ -28,7 +28,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 DEFAULT_FRONTEND = "ctc"
-SUPPORTED_MODEL = "tujia-ctc-0.2"
+SUPPORTED_MODEL = "tujia-ctc-v0.4"
 
 
 @dataclass

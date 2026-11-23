@@ -56,14 +56,15 @@ python -c "import tujia_asr; print(tujia_asr.__version__)"
 
 | File | Source |
 | --- | --- |
-| `tujia-ctc-v0.2.pt` | GitHub Releases → `tujia-ctc-0.2.tar.gz` → `model/` |
-| `tujia-xlsr53-ft/` | Hugging Face or ModelScope `TujiaNLP/tujia-xlsr53-ft` |
+| `tujia-ctc-v0.4.pt` | GitHub Releases → `tujia-ctc-0.4.tar.gz` → `model/` |
+| `tujia-xlsr53-v03f/` | Hugging Face or ModelScope `TujiaNLP/tujia-xlsr53-v03f` |
+| `tujia-ctc-v0.3.pt` | older release (`tujia-ctc-0.3.tar.gz`), same encoder |
 | `tujia-ctc-v0.1.pt` | `tujia-ctc-0.1.tar.gz` → `model/` (toneless) |
 
 The fine-tuned encoder directory must contain `config.json`:
 
 ```
-tujia-xlsr53-ft/
+tujia-xlsr53-v03f/
 ├── config.json
 ├── preprocessor_config.json
 ├── model-00001-of-00005.safetensors
@@ -74,13 +75,13 @@ tujia-xlsr53-ft/
 Point the package at both:
 
 ```bash
-export TUJIA_CTC_CKPT=/path/to/tujia-ctc-v0.2.pt
-export TUJIA_XLSR=/path/to/tujia-xlsr53-ft
+export TUJIA_CTC_CKPT=/path/to/tujia-ctc-v0.4.pt
+export TUJIA_XLSR=/path/to/tujia-xlsr53-v03f
 ```
 
-Or pass `--ckpt` / `--encoder` per run. The v0.2 encoder **cannot** be replaced
-by the original `facebook/wav2vec2-xlsr-53-espeak-cv-ft`; v0.1 can use the
-original.
+Or pass `--ckpt` / `--encoder` per run. The fine-tuned encoder **cannot** be
+replaced by the original `facebook/wav2vec2-xlsr-53-espeak-cv-ft`; v0.1 can use
+the original.
 
 **Mainland China.** Use mirrors:
 
@@ -107,19 +108,20 @@ silence automatically (`--seg` / `--search`).
 
 ### Fewer dropped syllables (`--blank-bias`)
 
-v0.3 is conservative: on the 353-clip held-out set it drops 41% of the reference
-syllables and emits only 62% of the expected length, against 24% drops and 0.86
-length for v0.2. When a human proofreads the output, a visible wrong syllable is
-more useful than a gap, so `--blank-bias 1.0` lowers the CTC blank logit and
-converts many drops into substitutions:
+v0.4 keeps the default at `0.0`: its deletion rate is already 0.6%, and raising
+the bias would add spurious syllables instead of recovering missing ones.
+
+The knob still matters for **v0.3**, which was conservative: on the 353-clip
+held-out set it dropped 41% of the reference syllables and emitted only 62% of
+the expected length, against 24% drops and 0.86 length for v0.2. For v0.3,
+`--blank-bias 1.0` lowers the CTC blank logit and converts many drops into
+substitutions:
 
 - `1.0` — deletions 41% → 31%, length 0.62 → 0.75, SER +0.6 point
 - `1.5` — deletions 41% → 27%, length 0.62 → 0.80, SER +1.6 points
 
-`TUJIA_BLANK_BIAS` sets the same value from the environment; the demo Space runs
-at 1.0. The sweep reads reference labels through the v0.3i vocabulary, so its
-own baseline SER (0.759) sits 2.6 points above the 73.30% in the README; the
-deltas above are all from that single sweep.
+`TUJIA_BLANK_BIAS` sets the same value from the environment. The numbers above
+come from a v0.3 sweep and do not apply to v0.4.
 
 ---
 
@@ -142,8 +144,8 @@ tujia-asr audio.wav --dict lexicon.jsonl --json out.json
 Windows (PowerShell):
 
 ```powershell
-$env:TUJIA_CTC_CKPT = "C:\models\tujia-ctc-v0.2.pt"
-$env:TUJIA_XLSR = "C:\models\tujia-xlsr53-ft"
+$env:TUJIA_CTC_CKPT = "C:\models\tujia-ctc-v0.4.pt"
+$env:TUJIA_XLSR = "C:\models\tujia-xlsr53-v03f"
 tujia-asr audio.wav --dict lexicon.jsonl
 ```
 
@@ -263,7 +265,7 @@ print(res["words"][0]["ortho"], res["words"][0]["tier"])
 | `编码器目录不存在` | `TUJIA_XLSR` unset or one level too high | point at the folder containing `config.json` |
 | `metadata.get("format")` / safetensors error | an old copy of the encoder | delete the folder and re-download |
 | `soundfile` error on `.mp4` | unsupported container | convert to wav first |
-| `KeyError` on load | `vocab.txt` does not match the checkpoint | do not mix v0.1 and v0.2 files |
+| `KeyError` on load | `vocab.txt` does not match the checkpoint | keep each version's `vocab.txt` with its own `.pt` |
 | No words, only syllables | no `--dict`, or lexicon not matching | check the `unknown` spans and the lexicon |
 | Very slow on CPU | expected | ~1× real time per clip; use `--seg` |
 
@@ -285,17 +287,17 @@ python3 -m venv .venv && source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 
-# encoder (v0.2 only)
+# encoder (v0.4 / v0.3)
 ./fetch_encoder.sh ./models
 
 # decode
-TUJIA_XLSR=./models/tujia-xlsr53-ft python infer.py audio.wav --device cpu
+TUJIA_XLSR=./models/tujia-xlsr53-v03f python infer.py audio.wav --device cpu
 ```
 
 Windows: install `torch torchaudio` with the CPU index, then run
 
 ```powershell
-$env:TUJIA_XLSR = "models\tujia-xlsr53-ft"
+$env:TUJIA_XLSR = "models\tujia-xlsr53-v03f"
 python infer.py audio.wav --device cpu
 ```
 
@@ -311,8 +313,9 @@ Archive `infer.py` flags: `--json`, `--start`, `--duration`, `--device`,
 
 ## 11. What the labels mean
 
-v0.2 emits 708 toned syllables plus blank. The tone (`21 / 35 / 53 / 55`) is part
-of the label, so `la35` is one unit, not `la` plus a tone. There is no word
+v0.4 emits 932 toneless syllables plus blank; a separate head supplies the tone
+(`21 / 35 / 53 / 55`), and the package combines the two into units such as
+`la35`. v0.3 and v0.2 carry the tone inside the label. There is no word
 segmentation, translation or punctuation inside the model itself; the package
 adds word segmentation when a lexicon is supplied.
 

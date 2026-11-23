@@ -48,12 +48,14 @@ _gr_blocks.Blocks.get_api_info = _safe_api_info
 
 HERE = Path(__file__).resolve().parent
 
-CKPT_REPO = os.environ.get("TUJIA_CTC_REPO", "TujiaNLP/tujia-ctc-v0.3")
+CKPT_REPO = os.environ.get("TUJIA_CTC_REPO", "TujiaNLP/tujia-ctc-v0.4")
 ENC_REPO = os.environ.get("TUJIA_ENC_REPO", "TujiaNLP/tujia-xlsr53-v03f")
 # v0.3 在弱音与连读处过量输出 blank（held-out 删除率 41%、长度只有参考的 62%）。
 # 校对场景里「看得见的错字」比「整段消失」有用，压 1.0 后删除率降到 31%，
 # SER 只差 0.6 个点。
-DEFAULT_BLANK_BIAS = 1.0
+# v0.4 的删除率只有 0.6%，不再需要靠压低 blank 来防止整段消失；
+# 默认 0.0，避免调高后反而多出噪声音节。
+DEFAULT_BLANK_BIAS = 0.0
 os.environ.setdefault("TUJIA_BLANK_BIAS", str(DEFAULT_BLANK_BIAS))
 
 SCHEMA_VERSION = 1
